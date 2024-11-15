@@ -1,11 +1,87 @@
 const Car = require("../Models/Car.js");
+const cloudinary = require("../cloudinary.js");
+const fs = require("fs");
+
+// exports.createCar = async (req, res) => {
+//     try {
+//         console.log("Request Body:", req.body);
+//         console.log("User ID:", req.user.id);
+//         // console.log("Request Files:", req.files);
+
+//         if (!req.files || req.files.length === 0) {
+//             return res.status(400).json({ error: "No images uploaded." });
+//         }
+
+//         const uploader = async (path) => await cloudinary.uploads(path, "Images");
+//         const urls = [];
+
+//         for (const file of req.files) {
+//             const { path } = file;
+//             const newPath = await uploader(path);
+//             urls.push(newPath.url);
+//             fs.unlinkSync(path); // Remove temporary file
+//         }
+
+//         console.log("========== > URLS < =============== : ",urls);
+
+//         const { title, description, tags, car_type, company, dealer } = req.body;
+
+//         const car = await Car.create({
+//             title,
+//             description,
+//             tags,
+//             car_type,
+//             company,
+//             dealer,
+//             user: req.user.id,
+//             images: urls,
+//         });
+
+//         res.status(201).json({
+//             status: "success",
+//             message: "Car created successfully",
+//             car,
+//         });
+//     } catch (error) {
+//         console.error("Car creation error:", error);
+//         res.status(500).json({ error: "Failed to create car" });
+//     }
+// };
+
+
+
+// Additional functions for listing, updating, and deleting cars follow a similar pattern.
+
+// List all cars for the authenticated user
 
 exports.createCar = async (req, res) => {
     try {
         console.log("Request Body:", req.body);
         console.log("User ID:", req.user.id);
+        // console.log(req)
 
+        // Check if required fields are present in the request body
         const { title, description, tags, car_type, company, dealer } = req.body;
+        if (!title || !description || !car_type || !company || !dealer) {
+            return res.status(400).json({ error: "Missing required fields." });
+        }
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: "No images uploaded." });
+        }
+
+        const uploader = async (path) => await cloudinary.uploads(path, "Images");
+        const urls = [];
+
+        for (const file of req.files) {
+            const { path } = file;
+            const newPath = await uploader(path);
+            urls.push(newPath.url);
+            fs.unlinkSync(path); // Remove temporary file
+        }
+
+        console.log("Uploaded URLs:", urls);
+
         const car = await Car.create({
             title,
             description,
@@ -14,20 +90,20 @@ exports.createCar = async (req, res) => {
             company,
             dealer,
             user: req.user.id,
-            images: req.files ? req.files.map(file => file.path) : []
+            images: urls,
         });
 
-        res.status(201).json({ car });
+        res.status(201).json({
+            status: "success",
+            message: "Car created successfully",
+            car,
+        });
     } catch (error) {
         console.error("Car creation error:", error);
         res.status(500).json({ error: "Failed to create car" });
     }
 };
 
-
-// Additional functions for listing, updating, and deleting cars follow a similar pattern.
-
-// List all cars for the authenticated user
 exports.listCars = async (req, res) => {
     try {
         const cars = await Car.find({ user: req.user.id });
